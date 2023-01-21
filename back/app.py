@@ -1,4 +1,4 @@
-import json
+import csv
 import os 
 from flask import Flask, request ,redirect, render_template, url_for
 from flask_cors import CORS
@@ -6,22 +6,27 @@ from flask_cors import CORS
 app = Flask(__name__, template_folder='../front')
 CORS(app)
 
-myFile= "./back/students.json"
-students={}
+myFile= "./back/students.csv"
+students=[]
 
 def loadFromFile():
+    students=[]
     isExist = os.path.exists(myFile)
     if isExist:
-        with open(myFile, 'r') as openFile:
-            students = json.load(openFile)
+        with open(myFile, newline='') as openFile:
+            reader = csv.DictReader(openFile)
+            for stu in reader:
+                students.append(stu)
         return students
     return []
 
 def save2File(students):
-    jsonString = json.dumps(students, indent=4)
-    with open(myFile, "w") as outfile:
-	    outfile.write(jsonString)
-
+    with open(myFile, 'w', newline='') as outfile:
+        fieldnames = ['id', 'name', 'age', 'city']
+        writer = csv.DictWriter(outfile, fieldnames=fieldnames)
+        writer.writeheader()
+        for stu in students:
+            writer.writerow(stu)
 
 @app.route('/students/', methods = ['GET', 'POST','DELETE'])
 @app.route('/students/<id>', methods = ['GET', 'POST','DELETE','PUT'])
@@ -34,8 +39,8 @@ def crude_students(id=-1):
         students = loadFromFile() 
         maxId = 0
         for stu in students:
-            if stu['id'] > maxId : 
-                maxId = stu['id']
+            if int(stu['id']) > maxId : 
+                maxId = int(stu['id'])
         newStudent = {"id":maxId + 1, "name": name, "age": age, "city": city}
         students.append(newStudent)
         save2File(students)
@@ -51,7 +56,7 @@ def crude_students(id=-1):
     if request.method == 'DELETE': 
         students = loadFromFile() 
         for stu in students:
-            if stu['id'] == int(id): 
+            if int(stu['id']) == int(id): 
                 students.remove(stu)
         save2File(students)
         return {"msg":"row deleted"}
@@ -60,7 +65,7 @@ def crude_students(id=-1):
         request_data = request.get_json()
         students = loadFromFile() 
         for stu in students:
-            if stu['id'] == int(id): 
+            if int(stu['id']) == int(id): 
                 stu['city'] = request_data['city']
                 stu['age'] = request_data['age']
                 stu['name']= request_data['name']
